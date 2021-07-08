@@ -63,6 +63,8 @@ MaterialEffects::MaterialEffects():
   materialInterface_(nullptr),
   debugLvl_(0)
 {
+  eLossCurve_ = new TGraph();
+  setEnergyLossFile("dummy");
 }
 
 MaterialEffects::~MaterialEffects()
@@ -123,12 +125,12 @@ double MaterialEffects::effects(const std::vector<RKStep>& steps,
     debugOut << "     MaterialEffects::effects \n";
   }
 
-  /*debugOut << "noEffects_ " << noEffects_ << "\n";
-  debugOut << "energyLossBetheBloch_ " << energyLossBetheBloch_ << "\n";
-  debugOut << "noiseBetheBloch_ " << noiseBetheBloch_ << "\n";
-  debugOut << "noiseCoulomb_ " << noiseCoulomb_ << "\n";
-  debugOut << "energyLossBrems_ " << energyLossBrems_ << "\n";
-  debugOut << "noiseBrems_ " << noiseBrems_ << "\n";*/
+  //debugOut << "noEffects_ " << noEffects_ << "\n";
+  //debugOut << "energyLossBetheBloch_ " << energyLossBetheBloch_ << "\n";
+  //debugOut << "noiseBetheBloch_ " << noiseBetheBloch_ << "\n";
+  //debugOut << "noiseCoulomb_ " << noiseCoulomb_ << "\n";
+  //debugOut << "energyLossBrems_ " << energyLossBrems_ << "\n";
+  //debugOut << "noiseBrems_ " << noiseBrems_ << "\n";
 
 
   if (noEffects_) return 0.;
@@ -206,11 +208,13 @@ double MaterialEffects::effects(const std::vector<RKStep>& steps,
 
   } // end loop over steps
 
+  //std::cout<<" Mom : "<<mom<<" Mom Loss : "<<momLoss<<"\n";
+
   if (momLoss >= mom) {
     Exception exc("MaterialEffects::effects ==> momLoss >= momentum, aborting extrapolation!",__LINE__,__FILE__);
     exc.setFatal();
     throw exc;
-  }
+    }
 
   return momLoss;
 }
@@ -371,18 +375,21 @@ void MaterialEffects::getParticleParameters()
 }
 
 
-void MaterialEffects::getMomGammaBeta(double Energy,
+bool MaterialEffects::getMomGammaBeta(double Energy,
                      double& mom, double& gammaSquare, double& gamma, double& betaSquare) const {
 
   if (Energy <= mass_) {
-    Exception exc("MaterialEffects::getMomGammaBeta - Energy <= mass",__LINE__,__FILE__);
-    exc.setFatal();
-    throw exc;
+    std::cout<<" MaterialEffects::getMomGammaBeta - Energy <= mass "<<"\n";
+    //Exception exc("MaterialEffects::getMomGammaBeta - Energy <= mass",__LINE__,__FILE__);
+    //exc.setFatal();
+    //throw exc;
+    return false;
   }
   gamma = Energy/mass_;
   gammaSquare = gamma*gamma;
   betaSquare = 1.-1./gammaSquare;
   mom = Energy*sqrt(betaSquare);
+  return true;
 }
 
 
@@ -393,8 +400,11 @@ double MaterialEffects::momentumLoss(double stepSign, double mom, bool linear)
 {
   double E0 = hypot(mom, mass_);
   double step = stepSize_*stepSign; // signed
-
-
+  double E_kin = 1E3*(E0 - mass_);// MeV
+  
+  //std::cout<<" step "<<stepSize_<<"\n";
+  //std::cout<<" E0 "<<E0<<" mass "<<mass_<<" Ekin "<<E_kin<<"\n";
+  
   // calc dEdx_, also needed in noiseBetheBloch!
   // using fourth order Runge Kutta
   //k1 = f(t0,y0)
@@ -409,40 +419,76 @@ double MaterialEffects::momentumLoss(double stepSign, double mom, bool linear)
   //dEdx4 = dEdx(x0 + h,   E3); E3 = E0 + h   * dEdx3
 
   double dEdx1 = dEdx(E0); // dEdx(x0,p0)
-
+  //std::cout<<" dEdx1 :  "<<dEdx1<<"\n";
+  
+  //double dEdx1p = dEdxParam(E_kin);
+  //std::cout<<" dEdx1p :  "<<dEdx1p<<"\n";
+  
   if (linear) {
     dEdx_ = dEdx1;
+
+    //dEdxp_ = dEdx1p;//MeV/cm
   }
   else { // RK4
     double E1 = E0 - dEdx1*step/2.;
     double dEdx2 = dEdx(E1); // dEdx(x0 + h/2, E0 + h/2 * dEdx1)
-
+    //std::cout<<" dEdx2 :  "<<dEdx2<<"\n";
+    
+    //double E1p = E_kin - dEdx1p*step/2.;
+    //double dEdx2p = dEdxParam(E1p);
+    //std::cout<<" dEdx2p :  "<<dEdx2p<<"\n";   
+    
     double E2 = E0 - dEdx2*step/2.;
     double dEdx3 = dEdx(E2); // dEdx(x0 + h/2, E0 + h/2 * dEdx2)
-
+    //std::cout<<" dEdx3 :  "<<dEdx3<<"\n";
+    
+    //double E2p = E_kin - dEdx2*step/2.;
+    //double dEdx3p = dEdxParam(E2p);
+    //std::cout<<" dEdx3p :  "<<dEdx3p<<"\n";
+    
     double E3 = E0 - dEdx3*step;
     double dEdx4 = dEdx(E3); // dEdx(x0 + h, E0 + h * dEdx3)
-
+    //std::cout<<" dEdx4 :  "<<dEdx4<<"\n";
+    
+    //double E3p = E_kin - dEdx3*step;
+    //double dEdx4p = dEdxParam(E3p);
+    //std::cout<<" dEdx4p :  "<<dEdx4p<<"\n";
+    
     dEdx_ = (dEdx1 + 2.*dEdx2 + 2.*dEdx3 + dEdx4)/6.;
+
+    //dEdxp_ = (dEdx1p + 2.*dEdx2p + 2.*dEdx3p + dEdx4p)/6.;
   }
 
   E_ = E0 - dEdx_*step*0.5;
 
-  double dE = step*dEdx_; // positive for positive stepSign
+  //Ep_ = E_kin - dEdxp_*step*0.5;
 
+  double dE  = step*dEdx_; // positive for positive stepSign
+  //double dEp = step*dEdxp_;
+  //std::cout<<"dE  "<<dE<<"\n";
+  
   double momLoss(0);
-
+  //double momLossp(0);
+  
   if (E0 - dE <= mass_) {
     // Step would stop particle (E_kin <= 0).
     return momLoss = mom;
   }
-  else momLoss = mom - sqrt(pow(E0 - dE, 2) - mass_*mass_); // momLoss; positive for positive stepSign
-
+  else{
+    
+    momLoss  = mom - sqrt(pow(E0 - dE, 2) - mass_*mass_); // momLoss; positive for positive stepSign
+    //momLossp = mom - sqrt(pow((E_kin - dEp)*1E-3 + mass_,2)- mass_*mass_);
+    
+  }
   if (debugLvl_ > 0) {
     debugOut << "      MaterialEffects::momentumLoss: mom = " << mom << "; E0 = " << E0
         << "; dEdx = " << dEdx_
         << "; dE = " << dE << "; mass = " << mass_ << "\n";
-  }
+
+    debugOut<< " Mom loss : "<<momLoss<<"\n";
+    //debugOut << " Energy loss from parameterizations; dEdxp : "<<dEdxp_<<"; dEp "<<dEp<<" (MeV) "<<"\n";
+    
+    }
 
   //assert(momLoss * stepSign >= 0);
 
@@ -453,14 +499,24 @@ double MaterialEffects::momentumLoss(double stepSign, double mom, bool linear)
 double MaterialEffects::dEdx(double Energy) {
 
   double mom(0), gammaSquare(0), gamma(0), betaSquare(0);
-  this->getMomGammaBeta(Energy, mom, gammaSquare, gamma, betaSquare);
+  bool validEnergy = this->getMomGammaBeta(Energy, mom, gammaSquare, gamma, betaSquare);
+
+  if(!validEnergy) return 0;
+
   if (pdg_ == c_monopolePDGCode) { // if TParticlePDG also had magnetic charge, life would have been easier.
     charge_ = mag_charge_ * sqrt(betaSquare); //effective charge for monopoles
   }
 
   double result(0);
 
-  if (energyLossBetheBloch_)
+  static const double betaGammaMin(0.05);
+  if (betaSquare*gammaSquare < betaGammaMin*betaGammaMin) {
+    //std::cout<<"MaterialEffects::dEdxBetheBloch ==> beta*gamma < 0.05, Bethe-Bloch implementation not valid anymore!"<<"\n";
+    double E_kin = 1E3*(Energy - mass_);// MeV
+    //std::cout<<" Ekin loss "<<dEdxParam(E_kin)*1E-3<<"\n";
+    result += dEdxParam(E_kin)*1E-3;//GeV
+    
+   }else if (energyLossBetheBloch_)
     result += dEdxBetheBloch(betaSquare, gamma, gammaSquare);
 
   if (energyLossBrems_)
@@ -469,15 +525,31 @@ double MaterialEffects::dEdx(double Energy) {
   return result;
 }
 
+double MaterialEffects::dEdxParam(double kinEnergy)
+{
+  double density = 0.17;// D2 760 torr mg/cm2. NB: Hardcoed for the moment. Get from material file
+  double dedx = 0.0;
+  try
+  {
 
+    dedx = eLossCurve_->Eval(kinEnergy)*density; //(MeV/mg/cm2)*(mg/cm3)
+    //std::cout<<" Kin Energ "<<kinEnergy<<" dedx "<<eLossCurve_->Eval(kinEnergy)<<"\n";
+    
+  }catch(...){
+
+  }
+
+  return dedx; //(MeV/cm)
+  
+}
 double MaterialEffects::dEdxBetheBloch(double betaSquare, double gamma, double gammaSquare) const
 {
-  static const double betaGammaMin(0.05);
-  if (betaSquare*gammaSquare < betaGammaMin*betaGammaMin) {
-    Exception exc("MaterialEffects::dEdxBetheBloch ==> beta*gamma < 0.05, Bethe-Bloch implementation not valid anymore!",__LINE__,__FILE__);
-    exc.setFatal();
-    throw exc;
-  }
+  //static const double betaGammaMin(0.05);
+  //if (betaSquare*gammaSquare < betaGammaMin*betaGammaMin) {
+    //Exception exc("MaterialEffects::dEdxBetheBloch ==> beta*gamma < 0.05, Bethe-Bloch implementation not valid anymore!",__LINE__,__FILE__);
+    // exc.setFatal();
+    // throw exc;
+    // }
 
   // calc dEdx_, also needed in noiseBetheBloch!
   double result( 0.307075 * matZ_ / matA_ * matDensity_ / betaSquare * charge_ * charge_ );
@@ -893,6 +965,64 @@ void MaterialEffects::drawdEdx(int pdg) {
   hdEdxBrems.Write();
   outfile.Close();
 }
+
+void MaterialEffects::setEnergyLossFile(std::string file){
+
+  eLossFileName_ = file;
+ 
+    
+  //eLossFileName_ = "/mnt/simulations/attpcroot/fair_install_2020/ATTPCROOTv2/resources/energy_loss/deuteron_D2_1bar.txt";//hardcoded for now
+  eLossFileName_ = "/mnt/simulations/attpcroot/fair_install_2020/ATTPCROOTv2/resources/energy_loss/proton_D2_1bar.txt";//hardcoded for now
+    
+    //eLossFile_.exceptions(std::ifstream::failbit | std::ifstream::badbit); 
+
+    Float_t ener         = 0;
+    TString enerUnit     = "";
+    Float_t dEdx_elec    = 0;
+    Float_t dEdx_nucl    = 0;
+    Float_t range        = 0;
+    TString rangeUnit    = "";
+    Float_t lonStra      = 0;
+    TString lonStraUnit  = "";
+    Float_t latStra      = 0;
+    TString latStraUnit  = "";
+    
+    try{
+
+      eLossFile_.open(eLossFileName_);
+      std::cout<<" Processing energy loss data file "<<eLossFileName_<<"\n";
+      std::string line;
+      for(auto i = 0 ; i<3 ; ++i ){
+	std::getline(eLossFile_, line);//read the header
+	//std::cout<<line<<"\n";
+      }
+
+     while (std::getline(eLossFile_, line)) {
+
+       
+      std::istringstream data(line);
+      data >> ener >> enerUnit >> dEdx_elec >> dEdx_nucl >> range >> rangeUnit >> lonStra >> lonStraUnit >> latStra >> latStraUnit ;
+      if(enerUnit.Contains("keV"))
+	ener/=1000.0;
+      //std::cout<<ener<<" "<<enerUnit.Data()<<" "<<dEdx_elec<<" "<<dEdx_nucl<<" "<<range<<" "<<rangeUnit.Data()<<" "<<lonStra<<" "<<lonStraUnit.Data()<<" "<<latStra<<" "<<latStraUnit<<"\n";
+      
+      eLossCurve_->SetPoint(eLossCurve_->GetN(),ener,dEdx_elec);
+      if(eLossFile_.eof()) break;
+     }
+
+     
+     //std::cout<<" Sanity check "<<"\n"; 
+     //Sanity check
+     //for(auto i = 0 ; i<100 ; ++i)
+     //{
+     // std::cout<<" Energy : "<<i<<" - dE/dx : "<<eLossCurve_->Eval(i+0.65)<<"\n";	 
+     //}
+     
+      }catch (...){
+
+      }  
+}
+
 
 } /* End of namespace genfit */
 

@@ -130,13 +130,13 @@ void KalmanFitterRefTrack::processTrackWithRep(Track* tr, const AbsTrackRep* rep
       if (debugLvl_ > 0) {
         debugOut << " KalmanFitterRefTrack::processTrack with rep " << rep
         << " (id == " << tr->getIdForRep(rep) << ")"<< ", iteration nr. " << nIt << "\n";
-      }
+       }
 
       // prepare
       if (!prepareTrack(tr, rep, resortHits, nFailedHits) && !refitAll_) {
         if (debugLvl_ > 0) {
           debugOut << "KalmanFitterRefTrack::processTrack. Track preparation did not change anything!\n";
-        }
+	}
 
         status->setIsFitted();
 
@@ -165,7 +165,7 @@ void KalmanFitterRefTrack::processTrackWithRep(Track* tr, const AbsTrackRep* rep
         debugOut << "KalmanFitterRefTrack::processTrack. Prepared Track:";
         tr->Print("C");
         //tr->Print();
-      }
+       }
 
       // resort
       if (resortHits) {
@@ -221,7 +221,7 @@ void KalmanFitterRefTrack::processTrackWithRep(Track* tr, const AbsTrackRep* rep
             << " new chi2s: " << chi2BW << ", " << chi2FW << std::endl;
         debugOut << "old pVals: " << oldPvalBW << ", " << oldPvalFW
             << " new pVals: " << PvalBW << ", " << PvalFW << std::endl;
-      }
+     } 
 
       // See if p-value only changed little.  If the initial
       // parameters are very far off, initial chi^2 and the chi^2
@@ -272,9 +272,9 @@ void KalmanFitterRefTrack::processTrackWithRep(Track* tr, const AbsTrackRep* rep
       }
 
       if (nIt >= maxIterations_) {
-        if (debugLvl_ > 0) {
+        //if (debugLvl_ > 0) {
           debugOut << "KalmanFitterRefTrack::number of max iterations reached!\n";
-        }
+	  //}
         break;
       }
     }
@@ -286,7 +286,7 @@ void KalmanFitterRefTrack::processTrackWithRep(Track* tr, const AbsTrackRep* rep
       status->setNFailedPoints(nFailedHits);
       if (debugLvl_ > 0) {
         status->Print();
-      }
+	 }
       return;
     }
 
@@ -374,10 +374,10 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
   for (; i<nPoints; ++i) {
 
     try {
-
+      
       if (debugLvl_ > 0) {
         debugOut << "Prepare TrackPoint " << i << "\n";
-      }
+       }
 
       TrackPoint* trackPoint = tr->getPoint(i);
 
@@ -385,14 +385,15 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
       if (!trackPoint->hasRawMeasurements()) {
         if (debugLvl_ > 0) {
           debugOut << "TrackPoint has no rawMeasurements -> continue \n";
-        }
+	 }
         continue;
       }
 
       newRefState = false;
 
-
-      // get fitterInfo
+      
+      
+      //get fitterInfo
       KalmanFitterInfo* fitterInfo(nullptr);
       if (trackPoint->hasFitterInfo(rep))
         fitterInfo = dynamic_cast<KalmanFitterInfo*>(trackPoint->getFitterInfo(rep));
@@ -417,6 +418,7 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
         }
       }
 
+      
       // get smoothedState if available
       if (fitterInfo->hasPredictionsAndUpdates()) {
         smoothedState = &(fitterInfo->getFittedState(true));
@@ -429,6 +431,7 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
         smoothedState = nullptr;
       }
 
+            
 
       if (fitterInfo->hasReferenceState()) {
 
@@ -438,7 +441,7 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
         if (!prevNewRefState) {
           if (debugLvl_ > 0) {
             debugOut << "TrackPoint already has referenceState and previous referenceState has not been altered -> continue \n";
-          }
+	    }
           trackLen += referenceState->getForwardSegmentLength();
           if (setSortingParams)
             trackPoint->setSortingParameter(trackLen);
@@ -450,6 +453,8 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
 
           continue;
         }
+
+	
 
 
         if (prevReferenceState == nullptr) {
@@ -470,6 +475,8 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
           continue;
         }
 
+	
+
         // previous refState has been altered ->need to update transport matrices
         if (debugLvl_ > 0) {
           debugOut << "TrackPoint already has referenceState but previous referenceState has been altered -> update transport matrices and continue \n";
@@ -480,10 +487,11 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
         prevReferenceState->resetBackward();
         referenceState->resetForward();
 
+	
         double segmentLen = rep->extrapolateToPlane(stateToExtrapolate, fitterInfo->getReferenceState()->getPlane(), false, true);
         if (debugLvl_ > 0) {
           debugOut << "extrapolated stateToExtrapolate (prevReferenceState) by " << segmentLen << " cm.\n";
-        }
+	  }
         trackLen += segmentLen;
 
         if (segmentLen == 0) {
@@ -727,7 +735,7 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
       if (debugLvl_ > 0) {
         errorOut << "exception at hit " << i << "\n";
         debugOut << e.what();
-      }
+	}
 
 
       ++nFailedHits;
@@ -742,7 +750,7 @@ bool KalmanFitterRefTrack::prepareTrack(Track* tr, const AbsTrackRep* rep, bool 
 
         if (debugLvl_ > 0) {
           debugOut << "There was an exception, try to continue with next TrackPoint " << i+1 << " \n";
-        }
+	 }
 
         continue;
       }

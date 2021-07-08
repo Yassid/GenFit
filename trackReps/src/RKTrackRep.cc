@@ -144,7 +144,7 @@ double RKTrackRep::extrapolateToLine(StateOnPlane& state,
 
   checkCache(state, nullptr);
 
-  static const unsigned int maxIt(1000);
+  static const unsigned int maxIt(100);
 
   // to 7D
   M1x7 state7;
@@ -245,7 +245,7 @@ double RKTrackRep::extrapToPoint(StateOnPlane& state,
 
   checkCache(state, nullptr);
 
-  static const unsigned int maxIt(1000);
+  static const unsigned int maxIt(10000);
 
   // to 7D
   M1x7 state7;
@@ -340,9 +340,9 @@ double RKTrackRep::extrapToPoint(StateOnPlane& state,
   }
 
 
-  if (debugLvl_ > 0) {
+   if (debugLvl_ > 0) {
     debugOut << "RKTrackRep::extrapolateToPoint(): Reached POCA after " << iterations+1 << " iterations. Distance: " << (point-poca).Mag() << " cm. Angle deviation: " << dir.Angle((point-poca))-TMath::PiOver2() << " rad \n";
-  }
+    }
 
   lastEndState_ = state;
 
@@ -2370,6 +2370,13 @@ double RKTrackRep::Extrap(const DetPlane& startPlane,
 
     M1x7 J_MMT_unprojected_lastRow = {{0, 0, 0, 0, 0, 0, 1}};
 
+    //Exit RK by low momentum
+    if(fabs(charge/state7[6])<2E-2)
+    {
+
+      break;
+    }
+
     if( ! RKutta(SU, destPlane, charge, mass, state7, &J_MMT_, &J_MMT_unprojected_lastRow,
 		 coveredDistance, flightTime, checkJacProj, noiseProjection_,
 		 limits_, onlyOneStep, !fillExtrapSteps) ) {
@@ -2419,7 +2426,7 @@ double RKTrackRep::Extrap(const DetPlane& startPlane,
           debugOut << "7D noise: \n";
           RKTools::printDim(noise->begin(), 7, 7);
         }
-      }
+	}
 
       // do momLoss only for defined 1/momentum .ne.0
       if(fabs(state7[6])>1.E-10) {
