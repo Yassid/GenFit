@@ -64,7 +64,7 @@ MaterialEffects::MaterialEffects():
   debugLvl_(0)
 {
   eLossCurve_ = new TGraph();
-  setEnergyLossFile("dummy");
+  //setEnergyLossFile("dummy");
 }
 
 MaterialEffects::~MaterialEffects()
@@ -969,10 +969,9 @@ void MaterialEffects::drawdEdx(int pdg) {
 void MaterialEffects::setEnergyLossFile(std::string file){
 
   eLossFileName_ = file;
- 
     
   //eLossFileName_ = "/mnt/simulations/attpcroot/fair_install_2020/ATTPCROOTv2/resources/energy_loss/deuteron_D2_1bar.txt";//hardcoded for now
-  eLossFileName_ = "/mnt/simulations/attpcroot/fair_install_2020/ATTPCROOTv2/resources/energy_loss/proton_D2_1bar.txt";//hardcoded for now
+  //eLossFileName_ = "/mnt/simulations/attpcroot/fair_install_2020/ATTPCROOTv2/resources/energy_loss/proton_D2_1bar.txt";//hardcoded for now
     
     //eLossFile_.exceptions(std::ifstream::failbit | std::ifstream::badbit); 
 
@@ -990,6 +989,13 @@ void MaterialEffects::setEnergyLossFile(std::string file){
     try{
 
       eLossFile_.open(eLossFileName_);
+      
+      if((eLossFile_.peek() == std::ifstream::traits_type::eof()))
+	{
+	  std::cout<<" Error: Energy loss file not found! Exiting..."<<"\n";
+	  std::exit(EXIT_FAILURE);
+	  }  
+	 
       std::cout<<" Processing energy loss data file "<<eLossFileName_<<"\n";
       std::string line;
       for(auto i = 0 ; i<3 ; ++i ){
