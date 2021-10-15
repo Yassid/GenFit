@@ -122,8 +122,12 @@ public:
   void drawdEdx(int pdg = 11);
 
 
-  //Sets the energy loss file by SRIM or other software
+  //! Sets the energy loss file by SRIM or other software
   void setEnergyLossFile(std::string file);
+  //! Uses ONLY energy loss tables
+  void useEnergyLossParam();
+
+  void setGasMediumDensity(double density);
 
  private:
 
@@ -221,6 +225,9 @@ public:
 
   unsigned int debugLvl_;
 
+  double        maxKinEnergy_; //!< Maximimum energy of the parameterization curve
+  double        gasMediumDensity_;
+  bool          useELossParam_;
   std::ifstream eLossFile_;
   std::string   eLossFileName_;
 
