@@ -2277,6 +2277,13 @@ double RKTrackRep::estimateStep(const M1x7& state7,
     }
   }
 
+  if(RKSteps_.size()>100){
+     Exception exc("RKTrackRep::estimateStep ==> maximum number of iterations reached",__LINE__,__FILE__);
+     exc.setFatal();
+     throw exc;
+
+  }
+  
   if (debugLvl_ > 0) {
     debugOut << "   final limits:\n";
     limits.Print();
@@ -2352,8 +2359,8 @@ double RKTrackRep::Extrap(const DetPlane& startPlane,
 
     if(++numIt > maxNumIt){
       Exception exc("RKTrackRep::Extrap ==> maximum number of iterations exceeded",__LINE__,__FILE__);
-      //exc.setFatal();
-      //throw exc;
+      // exc.setFatal();
+      // throw exc;
       break;
     }
 
@@ -2424,13 +2431,13 @@ double RKTrackRep::Extrap(const DetPlane& startPlane,
         debugOut << "momLoss: " << momLoss << " GeV; relative: " << momLoss/fabs(charge/state7[6])
             << "; coveredDistance = " << coveredDistance << "\n";
 
-	debugOut<<" Steps "<<RKSteps_.size()<<"\n";
-	
-	if (debugLvl_ > 1 && noise != nullptr) {
+        debugOut << " Steps " << RKSteps_.size() << "\n";
+
+        if (debugLvl_ > 1 && noise != nullptr) {
           debugOut << "7D noise: \n";
           RKTools::printDim(noise->begin(), 7, 7);
         }
-       }
+      }
 
       // do momLoss only for defined 1/momentum .ne.0
       if(fabs(state7[6])>1.E-10) {

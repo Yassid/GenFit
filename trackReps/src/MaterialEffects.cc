@@ -39,35 +39,18 @@ namespace genfit {
 
 MaterialEffects* MaterialEffects::instance_ = nullptr;
 
+MaterialEffects::MaterialEffects()
+    : noEffects_(false), energyLossBetheBloch_(true), noiseBetheBloch_(true),
+      noiseCoulomb_(true), energyLossBrems_(true), noiseBrems_(true),
+      ignoreBoundariesBetweenEqualMaterials_(true), me_(0.510998910E-3),
+      stepSize_(0), dEdx_(0), E_(0), matDensity_(0), matZ_(0), matA_(0),
+      radiationLength_(0), mEE_(0), pdg_(0), charge_(0), mag_charge_(0),
+      mass_(0), mscModelCode_(0), materialInterface_(nullptr), debugLvl_(0),
+      maxKinEnergy_(0), useELossParam_(0)
 
-MaterialEffects::MaterialEffects():
-  noEffects_(false),
-  energyLossBetheBloch_(true), noiseBetheBloch_(true),
-  noiseCoulomb_(true),
-  energyLossBrems_(true), noiseBrems_(true),
-  ignoreBoundariesBetweenEqualMaterials_(true),
-  me_(0.510998910E-3),
-  stepSize_(0),
-  dEdx_(0),
-  E_(0),
-  matDensity_(0),
-  matZ_(0),
-  matA_(0),
-  radiationLength_(0),
-  mEE_(0),
-  pdg_(0),
-  charge_(0),
-  mag_charge_(0),
-  mass_(0),
-  mscModelCode_(0),
-  materialInterface_(nullptr),
-  debugLvl_(0),
-  maxKinEnergy_(0),
-  useELossParam_(0)
-  
 {
   eLossCurve_ = new TGraph();
-  gasMediumDensity_ = 0.13138; //mg/cm2
+  gasMediumDensity_ = 0.15328; // mg/cm3
 }
 
 MaterialEffects::~MaterialEffects()
@@ -126,8 +109,8 @@ double MaterialEffects::effects(const std::vector<RKStep>& steps,
 
   if (debugLvl_ > 0) {
     debugOut << "     MaterialEffects::effects \n";
-    debugOut << " Steps size "<<steps.size()<<"\n";
-   }
+    debugOut << " Steps size " << steps.size() << "\n";
+  }
 
   //debugOut << "noEffects_ " << noEffects_ << "\n";
   //debugOut << "energyLossBetheBloch_ " << energyLossBetheBloch_ << "\n";
@@ -383,10 +366,11 @@ bool MaterialEffects::getMomGammaBeta(double Energy,
                      double& mom, double& gammaSquare, double& gamma, double& betaSquare) const {
 
   if (Energy <= mass_) {
-    Exception exc("MaterialEffects::getMomGammaBeta - Energy <= mass exception",__LINE__,__FILE__);
+    Exception exc("MaterialEffects::getMomGammaBeta - Energy <= mass exception",
+                  __LINE__, __FILE__);
     exc.setFatal();
     throw exc;
-    //return false;
+    // return false;
   }
   gamma = Energy/mass_;
   gammaSquare = gamma*gamma;
@@ -404,10 +388,10 @@ double MaterialEffects::momentumLoss(double stepSign, double mom, bool linear)
   double E0 = hypot(mom, mass_);
   double step = stepSize_*stepSign; // signed
   double E_kin = 1E3*(E0 - mass_);// MeV
-  
-  //std::cout<<" step "<<stepSize_<<"\n";
+
+  // std::cout<<" step "<<stepSize_<<"\n";
   // std::cout<<" E0 "<<E0<<" mass "<<mass_<<" Ekin "<<E_kin<<"\n";
-  
+
   // calc dEdx_, also needed in noiseBetheBloch!
   // using fourth order Runge Kutta
   //k1 = f(t0,y0)
@@ -504,7 +488,7 @@ double MaterialEffects::dEdx(double Energy) {
   double mom(0), gammaSquare(0), gamma(0), betaSquare(0);
   bool validEnergy = this->getMomGammaBeta(Energy, mom, gammaSquare, gamma, betaSquare);
   static const double betaGammaMin(0.05);
-  
+
   if(!validEnergy) return 0;
 
   if (pdg_ == c_monopolePDGCode) { // if TParticlePDG also had magnetic charge, life would have been easier.
@@ -513,30 +497,32 @@ double MaterialEffects::dEdx(double Energy) {
 
   double result(0);
 
-  double E_kin = 1E3*(Energy - mass_);// MeV
+  double E_kin = 1E3 * (Energy - mass_); // MeV
   //std::cout<<" Ekin loss "<<dEdxParam(E_kin)*1E-3<<"\n";
+
+  //std::cout<<" E_kin "<<E_kin<<" maxKinEnergy "<<maxKinEnergy_<<"\n";
   
-  if(useELossParam_)//Only ELoss parameterization
+  if (useELossParam_) // Only ELoss parameterization
   {
-    if(E_kin>maxKinEnergy_)
-      {
-	 Exception exc("MaterialEffects::dEdx ==> kinetic energy out of parameterization boundaries!",__LINE__,__FILE__);
-         exc.setFatal();
-         throw exc;
-   
-      }	
-    result += dEdxParam(E_kin)*1E-3;//GeV
-    
-  }else{ //Param+Bethe-Bloch
+    if (E_kin > maxKinEnergy_) {
+      Exception exc("MaterialEffects::dEdx ==> kinetic energy out of "
+                    "parameterization boundaries!",
+                    __LINE__, __FILE__);
+      exc.setFatal();
+      throw exc;
+    }
+    result += dEdxParam(E_kin) * 1E-3; // GeV
 
-  if (betaSquare*gammaSquare < betaGammaMin*betaGammaMin) {
+  } else { // Param+Bethe-Bloch
 
-    //std::cout<<"MaterialEffects::dEdxBetheBloch ==> beta*gamma < 0.05, Bethe-Bloch implementation not valid anymore!"<<"\n";
-      result += dEdxParam(E_kin)*1E-3;//GeV
-    
-   }else if (energyLossBetheBloch_)
-    result += dEdxBetheBloch(betaSquare, gamma, gammaSquare);
+    if (betaSquare * gammaSquare < betaGammaMin * betaGammaMin) {
 
+      // std::cout<<"MaterialEffects::dEdxBetheBloch ==> beta*gamma < 0.05,
+      // Bethe-Bloch implementation not valid anymore!"<<"\n";
+      result += dEdxParam(E_kin) * 1E-3; // GeV
+
+    } else if (energyLossBetheBloch_)
+      result += dEdxBetheBloch(betaSquare, gamma, gammaSquare);
   }
 
   if (energyLossBrems_)
@@ -547,17 +533,19 @@ double MaterialEffects::dEdx(double Energy) {
 
 double MaterialEffects::dEdxParam(double kinEnergy)
 {
-  double density = gasMediumDensity_;//  NB: Hardcoed for the moment. Get from material file
+  double density =
+      gasMediumDensity_; //  NB: Hardcoed for the moment. Get from material file
   double dedx = 0.0;
-  //try
+  // try
   //{
 
-  dedx = eLossCurve_->Eval(kinEnergy)*density; //(MeV/mg/cm2)*(mg/cm3)
-  //std::cout<<" Kin Energ "<<kinEnergy<<" dedx "<<eLossCurve_->Eval(kinEnergy)<<"\n";
-    
-    //}catch(...){
+  dedx = eLossCurve_->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
+  // std::cout<<" Kin Energ "<<kinEnergy<<" dedx
+  // "<<eLossCurve_->Eval(kinEnergy)<<"\n";
 
-    //}
+  //}catch(...){
+
+  //}
 
   return dedx; //(MeV/cm)
   
@@ -986,17 +974,12 @@ void MaterialEffects::drawdEdx(int pdg) {
   outfile.Close();
 }
 
-void MaterialEffects::useEnergyLossParam()
-{
-  useELossParam_ = true;  
+void MaterialEffects::useEnergyLossParam() { useELossParam_ = true; }
+
+void MaterialEffects::setGasMediumDensity(double density) {
+  gasMediumDensity_ = density;
 }
 
-void MaterialEffects::setGasMediumDensity(double density)
-{
-  gasMediumDensity_ = density;
-
-}  
-  
 void MaterialEffects::setEnergyLossFile(std::string file){
 
   eLossFileName_ = file;
@@ -1028,38 +1011,36 @@ void MaterialEffects::setEnergyLossFile(std::string file){
     std::string line;
     for (auto i = 0; i < 3; ++i) {
       std::getline(eLossFile_, line); // read the header
-      std::cout<<line<<"\n";
+      std::cout << line << "\n";
     }
 
     while (std::getline(eLossFile_, line)) {
 
-       
       std::istringstream data(line);
       data >> ener >> enerUnit >> dEdx_elec >> dEdx_nucl >> range >> rangeUnit >> lonStra >> lonStraUnit >> latStra >> latStraUnit ;
       if(enerUnit.Contains("keV"))
 	ener/=1000.0;
-      //std::cout<<ener<<" "<<enerUnit.Data()<<" "<<dEdx_elec<<" "<<dEdx_nucl<<" "<<range<<" "<<rangeUnit.Data()<<" "<<lonStra<<" "<<lonStraUnit.Data()<<" "<<latStra<<" "<<latStraUnit<<"\n";
 
+      std::cout<<ener<<" "<<enerUnit.Data()<<" "<<dEdx_elec<<" "<<dEdx_nucl<<" "<<range<<" "<<rangeUnit.Data()<<" "<<lonStra<<" "<<lonStraUnit.Data()<<" "<<latStra<<" "<<latStraUnit<<"\n";
 
-      if(ener>maxKinEnergy_)
-	maxKinEnergy_=ener;
-      
+      if (ener > maxKinEnergy_)
+        maxKinEnergy_ = ener;
+
       eLossCurve_->SetPoint(eLossCurve_->GetN(),ener,dEdx_elec);
       if(eLossFile_.eof()) break;
-     }
+    }
 
-    //std::cout<<" Maximum kinetic energy for energy loss : "<<maxKinEnergy_<<"\n";
-    
-    //std::cout<<" Sanity check "<<"\n"; 
-     //Sanity check
+     std::cout<<" Maximum kinetic energy for energy loss :"<<maxKinEnergy_<<"\n";
+
+     //std::cout<<" Sanity check "<<"\n";
+    // Sanity check
      //for(auto i = 0 ; i<1000 ; ++i)
-     //{
-    // std::cout<<" Energy : "<<i/10.0<<" - dE/dx : "<<eLossCurve_->Eval(i/10.0)<<" - dE/dx (density) : "<<gasMediumDensity_*eLossCurve_->Eval(i/10.0)<<"\n";	 
-    //}
-     
-      }catch (...){
+     // {
+     // std::cout<<" Energy : "<<i/10.0<<" - dE/dx :     "<<eLossCurve_->Eval(i/10.0)<<" - dE/dx (density) :"<<gasMediumDensity_*eLossCurve_->Eval(i/10.0)<<"\n";
+     // }
 
-      }  
+  } catch (...) {
+  }
 }
 
 
