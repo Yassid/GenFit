@@ -51,6 +51,7 @@ MaterialEffects::MaterialEffects()
 {
   eLossCurve_ = new TGraph();
   gasMediumDensity_ = 0.15328; // mg/cm3
+  
 }
 
 MaterialEffects::~MaterialEffects()
@@ -534,7 +535,7 @@ double MaterialEffects::dEdx(double Energy) {
 double MaterialEffects::dEdxParam(double kinEnergy)
 {
   double density =
-      gasMediumDensity_; //  NB: Hardcoed for the moment. Get from material file
+      gasMediumDensity_; 
   double dedx = 0.0;
   // try
   //{
@@ -978,6 +979,7 @@ void MaterialEffects::useEnergyLossParam() { useELossParam_ = true; }
 
 void MaterialEffects::setGasMediumDensity(double density) {
   gasMediumDensity_ = density;
+  std::cout<<" Selected medium density  : "<<gasMediumDensity_<<" mg/cm3"<<"\n";  
 }
 
 void MaterialEffects::setEnergyLossFile(std::string file){
@@ -1005,7 +1007,7 @@ void MaterialEffects::setEnergyLossFile(std::string file){
       std::cout << " Error: Energy loss file not found! Exiting..."
                 << "\n";
       std::exit(EXIT_FAILURE);
-    }
+    }        
 
     std::cout << " Processing energy loss data file " << eLossFileName_ << "\n";
     std::string line;
