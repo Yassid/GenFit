@@ -1003,11 +1003,15 @@ void MaterialEffects::setEnergyLossFile(std::string file){
 
     eLossFile_.open(eLossFileName_);
 
-    if ((eLossFile_.peek() == std::ifstream::traits_type::eof())) {
+     if ((eLossFile_.peek() == std::ifstream::traits_type::eof())) {
+       //if (eLossFile_.fail()) {
       std::cout << " Error: Energy loss file not found! Exiting..."
                 << "\n";
       std::exit(EXIT_FAILURE);
-    }        
+      }
+
+    //eLossFile_.clear();
+    //eLossFile_.seekg(0);
 
     std::cout << " Processing energy loss data file " << eLossFileName_ << "\n";
     std::string line;
