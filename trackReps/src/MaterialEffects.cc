@@ -540,9 +540,12 @@ double MaterialEffects::dEdxParam(double kinEnergy)
   // try
   //{
 
-  dedx = eLossCurve_->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
-  // std::cout<<" Kin Energ "<<kinEnergy<<" dedx
-  // "<<eLossCurve_->Eval(kinEnergy)<<"\n";
+  //TODO CHECK!
+   //dedx = eLossCurve_->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
+  dedx = eLossCurves_[pdg_]->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
+  //std::cout<<" pdg "<<pdg_<<" Kinetic energy "<<kinEnergy<<" - dedx "<<dedx<<" - dedx (no dens) : "<< eLossCurves_[pdg_]->Eval(kinEnergy)<<"\n";
+  
+  
 
   //}catch(...){
 
@@ -982,7 +985,7 @@ void MaterialEffects::setGasMediumDensity(double density) {
   std::cout<<" Selected medium density  : "<<gasMediumDensity_<<" mg/cm3"<<"\n";  
 }
 
-void MaterialEffects::setEnergyLossFile(std::string file){
+  void MaterialEffects::setEnergyLossFile(std::string file, Int_t pdg){
 
   eLossFileName_ = file;
 
@@ -999,28 +1002,35 @@ void MaterialEffects::setEnergyLossFile(std::string file){
   Float_t latStra = 0;
   TString latStraUnit = "";
 
+  std::ifstream* elossfile = new std::ifstream();
+  TGraph* elosscurve = new TGraph();
+  
   try {
+    
+    elossfile->open(eLossFileName_);
 
-    eLossFile_.open(eLossFileName_);
+    if ((elossfile->peek() == std::ifstream::traits_type::eof())) {
 
-     if ((eLossFile_.peek() == std::ifstream::traits_type::eof())) {
-       //if (eLossFile_.fail()) {
       std::cout << " Error: Energy loss file not found! Exiting..."
                 << "\n";
       std::exit(EXIT_FAILURE);
-      }
+    }
 
     //eLossFile_.clear();
     //eLossFile_.seekg(0);
 
     std::cout << " Processing energy loss data file " << eLossFileName_ << "\n";
     std::string line;
+    
     for (auto i = 0; i < 3; ++i) {
-      std::getline(eLossFile_, line); // read the header
+      std::getline(*elossfile,line);    
       std::cout << line << "\n";
     }
 
-    while (std::getline(eLossFile_, line)) {
+    
+
+    while (std::getline(*elossfile, line)) {
+    
 
       std::istringstream data(line);
       data >> ener >> enerUnit >> dEdx_elec >> dEdx_nucl >> range >> rangeUnit >> lonStra >> lonStraUnit >> latStra >> latStraUnit ;
@@ -1033,17 +1043,32 @@ void MaterialEffects::setEnergyLossFile(std::string file){
         maxKinEnergy_ = ener;
 
       eLossCurve_->SetPoint(eLossCurve_->GetN(),ener,dEdx_elec);
-      if(eLossFile_.eof()) break;
+      elosscurve->SetPoint(elosscurve->GetN(),ener,dEdx_elec);
+      //std::cout<<eLossCurve_->GetN()<<" "<<elosscurve->GetN()<<"\n";//NB: eLossCurve_ only valid if only one AtFitter::AtGenfit object is created.
+         if(elossfile->eof()) break;
     }
 
      std::cout<<" Maximum kinetic energy for energy loss :"<<maxKinEnergy_<<"\n";
+     std::cout<<" PDG (Pass by AtFitter constructor) "<<pdg<<"\n"; 
 
+     eLossFiles_.push_back(elossfile);
+
+     if(eLossCurves_.find(pdg) == eLossCurves_.end())
+       {
+	 std::cout<<" Adding energy loss map for : "<<pdg<<"\n";	 
+	 eLossCurves_.insert({pdg,elosscurve});
+	 std::cout<<" Number of tables : "<<eLossCurves_.size()<<"\n";
+       }else{
+	     std::cout<<" Warning! Key found in map : "<<pdg<<"\n";
+       }
+       
      //std::cout<<" Sanity check "<<"\n";
     // Sanity check
      //for(auto i = 0 ; i<1000 ; ++i)
-     // {
-     // std::cout<<" Energy : "<<i/10.0<<" - dE/dx :     "<<eLossCurve_->Eval(i/10.0)<<" - dE/dx (density) :"<<gasMediumDensity_*eLossCurve_->Eval(i/10.0)<<"\n";
-     // }
+     //{
+     //std::cout<<" Energy : "<<i/10.0<<" - dE/dx :     "<<eLossCurve_->Eval(i/10.0)<<" - dE/dx (density) :"<<gasMediumDensity_*eLossCurve_->Eval(i/10.0)<<"\n";
+     //std::cout<<" Energy (Curves) : "<<i/10.0<<" - dE/dx :     "<<elosscurve->Eval(i/10.0)<<" - dE/dx (density) :"<<gasMediumDensity_*elosscurve->Eval(i/10.0)<<"\n";
+     //}
 
   } catch (...) {
   }

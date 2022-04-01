@@ -122,7 +122,7 @@ public:
   void drawdEdx(int pdg = 11);
 
   //! Sets the energy loss file by SRIM or other software
-  void setEnergyLossFile(std::string file);
+  void setEnergyLossFile(std::string file, Int_t pdg);
   //! Uses ONLY energy loss tables
   void useEnergyLossParam();
 
@@ -230,6 +230,9 @@ private:
   std::ifstream eLossFile_;
   std::string   eLossFileName_;
 
+  std::vector<std::ifstream*> eLossFiles_;
+  std::map<Int_t,TGraph*> eLossCurves_;
+  
   TGraph* eLossCurve_;
   
   // ClassDef(MaterialEffects, 1);
