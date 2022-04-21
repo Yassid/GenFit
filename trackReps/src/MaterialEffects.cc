@@ -1042,8 +1042,8 @@ void MaterialEffects::setGasMediumDensity(double density) {
       if (ener > maxKinEnergy_)
         maxKinEnergy_ = ener;
 
-      eLossCurve_->SetPoint(eLossCurve_->GetN(),ener,dEdx_elec);
-      elosscurve->SetPoint(elosscurve->GetN(),ener,dEdx_elec);
+      eLossCurve_->SetPoint(eLossCurve_->GetN(),ener,dEdx_elec+dEdx_nucl);
+      elosscurve->SetPoint(elosscurve->GetN(),ener,dEdx_elec+dEdx_nucl);
       //std::cout<<eLossCurve_->GetN()<<" "<<elosscurve->GetN()<<"\n";//NB: eLossCurve_ only valid if only one AtFitter::AtGenfit object is created.
          if(elossfile->eof()) break;
     }

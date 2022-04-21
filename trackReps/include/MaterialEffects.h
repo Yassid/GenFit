@@ -230,9 +230,9 @@ private:
   std::ifstream eLossFile_;
   std::string   eLossFileName_;
 
-  std::vector<std::ifstream*> eLossFiles_;
-  std::map<Int_t,TGraph*> eLossCurves_;
-  
+  std::vector<std::ifstream *> eLossFiles_;
+  std::map<Int_t, TGraph *> eLossCurves_;
+
   TGraph* eLossCurve_;
   
   // ClassDef(MaterialEffects, 1);
