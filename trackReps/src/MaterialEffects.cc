@@ -535,14 +535,25 @@ double MaterialEffects::dEdx(double Energy) {
 double MaterialEffects::dEdxParam(double kinEnergy)
 {
   double density =
-      gasMediumDensity_; 
+      gasMediumDensity_;
   double dedx = 0.0;
+
+  // Guard: no SRIM/param energy-loss curve loaded for this species. This happens
+  // in native Bethe-Bloch mode (pions/kaons whose KE is outside the ion tables, so
+  // setEnergyLossFile is never called). The Param+Bethe-Bloch dispatch still routes
+  // here for very slow steps (beta*gamma < 0.05); without a curve, eLossCurves_[pdg_]
+  // is a null TGraph* and Eval() segfaults. Return 0 so the caller's Bethe-Bloch term
+  // stands. Species that DO load a table (heavy ions) are unaffected.
+  auto itCurve = eLossCurves_.find(pdg_);
+  if (itCurve == eLossCurves_.end() || itCurve->second == nullptr)
+    return 0.0;
+
   // try
   //{
 
   //TODO CHECK!
    //dedx = eLossCurve_->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
-  dedx = eLossCurves_[pdg_]->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
+  dedx = itCurve->second->Eval(kinEnergy) * density; //(MeV/mg/cm2)*(mg/cm3)
   //std::cout<<" pdg "<<pdg_<<" Kinetic energy "<<kinEnergy<<" - dedx "<<dedx<<" - dedx (no dens) : "<< eLossCurves_[pdg_]->Eval(kinEnergy)<<"\n";
   
   
